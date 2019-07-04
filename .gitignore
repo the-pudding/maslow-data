@@ -1,0 +1,4 @@
+.DS_Store
+analysis/packrat
+analysis/assets/data/raw_data/*
+analysis/assets/data/processed_data/*

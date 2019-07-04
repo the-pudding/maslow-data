@@ -1,0 +1,89 @@
+---
+title: "Maslow exploration"
+author: "Russell Goldenberg"
+date: "Last updated: `r format(Sys.time(), '%B %d, %Y')`"
+output: 
+  puddingR::puddingTheme:
+    toc: true
+    code_folding: "show"
+    number_sections: "false"
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## Introduction
+
+Kiki, do you love me? Are you riding?  
+Say you'll never ever leave from beside me  
+'Cause **I want ya**, and **I need ya**  
+And I'm down for you always  
+
+Drake obviously has a lot of needs and wants. Who are the neediest singers? How many get the two mixed up? Let's investigate...
+
+### Load Packages
+
+```{r load_packages, message = FALSE, warning = FALSE}
+# For general data cleaning and analysis
+library(tidyverse)
+
+# If your data includes dates that need to be wrangled
+library(lubridate)
+
+# For keeping your files in relative directories
+library(here)
+
+# For interactive/searchable tables in your report
+library(DT)
+```
+
+```{r load_data}
+filepath_meta <- here::here("assets", "data", "raw_data", "song_metadata.csv")
+song_data <- read_csv(filepath_meta)
+artist_data <- song_data %>% group_by(artist)
+
+# reduce artists to just those with 1+ solo billboard appearances
+artist_vetted <- artist_data %>%
+  summarize(count=n()) %>%
+  arrange(desc(count)) %>%
+  filter(count >= 1)
+
+# reduce songs to reduced artists
+song_vetted <- song_data %>% filter(artist %in% artist_vetted$artist)
+```
+
+## Data Analysis
+
+```{r parse_lyrics}
+dir_in <- here::here("assets", "data", "raw_data", "lyrics")
+file_out <- here::here("assets", "data", "processed_data", "needs_wants.csv")
+
+# loop through each song file and find wants and needs
+results <- pmap_df(song_vetted, function(...) {
+  argv <- c(...)
+  filepath <- paste(dir_in, argv["fname"], sep="/")
+  lines <- read_lines(filepath)
+  
+  # convert vector to dataframe
+  data <- as.data.frame(lines) %>%
+    # filter to lines with text
+    filter(lines != "") %>% 
+    # get rid of duplicate lines
+    unique() %>% 
+    # lowercase all text
+    mutate(lines=str_to_lower(lines)) %>%
+    # reduce to lines with desired verbage
+    filter(str_detect(lines, "i need ") | str_detect(lines, "i want ")) %>%
+    # add in artist name column + title
+    mutate(artist=argv["artist"], title=argv["title"])
+})
+
+write.table(results, file = file_out, row.names = FALSE, sep = ",")
+```
+
+Sweet. Let's checkout out some of the preliminary results, just looking at solo artists (no features) where a line includes an **I need** or **I want** expression.
+
+```{r results}
+datatable(results, rownames = FALSE, filter = "top", options = list(pageLength = 20, scrollX = TRUE))
+```
