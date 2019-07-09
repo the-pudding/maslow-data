@@ -20,7 +20,13 @@ Say you'll never ever leave from beside me
 'Cause **I want ya**, and **I need ya**  
 And I'm down for you always  
 
-Drake obviously has a lot of needs and wants. Who are the neediest singers? How many get the two mixed up? Let's investigate...
+Drake obviously has a lot of needs and wants. Some things to explore...
+
+* What are the 5 levels of needs of musicians?
+* where do the needs fall in the actual Maslow's hierarchy?
+* straight up wants vs. needs comparison
+* who are the neediest artists? *requires full artist discog
+* what are the misclassified needs that are really wants?
 
 ### Load Packages
 
@@ -60,7 +66,7 @@ dir_in <- here::here("assets", "data", "raw_data", "lyrics")
 file_out <- here::here("assets", "data", "processed_data", "needs_wants.csv")
 
 # loop through each song file and find wants and needs
-results <- pmap_df(song_vetted, function(...) {
+data_needs_wants <- pmap_df(song_vetted, function(...) {
   argv <- c(...)
   filepath <- paste(dir_in, argv["fname"], sep="/")
   lines <- read_lines(filepath)
@@ -79,11 +85,20 @@ results <- pmap_df(song_vetted, function(...) {
     mutate(artist=argv["artist"], title=argv["title"])
 })
 
-write.table(results, file = file_out, row.names = FALSE, sep = ",")
+write.table(data_needs_wants, file = file_out, row.names = FALSE, sep = ",")
 ```
 
 Sweet. Let's checkout out some of the preliminary results, just looking at solo artists (no features) where a line includes an **I need** or **I want** expression.
 
 ```{r results}
-datatable(results, rownames = FALSE, filter = "top", options = list(pageLength = 20, scrollX = TRUE))
+datatable(data_needs_wants, rownames = FALSE, filter = "top", options = list(pageLength = 20, scrollX = TRUE))
+```
+
+### What are the 5 levels of needs of musicians?
+```{r levels}
+data_needs <- data_needs_wants %>% filter(str_detect(lines, "i need "))
+```
+
+```{r results_needs}
+datatable(data_needs, rownames = FALSE, filter = "top", options = list(pageLength = 20, scrollX = TRUE))
 ```
