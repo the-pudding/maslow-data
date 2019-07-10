@@ -50,42 +50,54 @@ song_data <- read_csv(filepath_meta)
 artist_data <- song_data %>% group_by(artist)
 
 # reduce artists to just those with 1+ solo billboard appearances
-artist_vetted <- artist_data %>%
-  summarize(count=n()) %>%
-  arrange(desc(count)) %>%
-  filter(count >= 1)
+# artist_vetted <- artist_data %>%
+  # summarize(count=n()) %>%
+  # arrange(desc(count)) %>%
+  # filter(count >= 1)
 
 # reduce songs to reduced artists
-song_vetted <- song_data %>% filter(artist %in% artist_vetted$artist)
+# song_vetted <- song_data %>% filter(artist %in% artist_data$artist)
 ```
 
 ## Data Analysis
 
-```{r parse_lyrics}
+```{r parse_lyrics, message=FALSE}
 dir_in <- here::here("assets", "data", "raw_data", "lyrics")
 file_out <- here::here("assets", "data", "processed_data", "needs_wants.csv")
 
 # loop through each song file and find wants and needs
-data_needs_wants <- pmap_df(song_vetted, function(...) {
+data_needs_wants <- pmap_df(song_data, function(...) {
   argv <- c(...)
   filepath <- paste(dir_in, argv["fname"], sep="/")
   lines <- read_lines(filepath)
   
+  
   # convert vector to dataframe
-  data <- as.data.frame(lines) %>%
+  lines_df <- as.data.frame(lines, stringsAsFactors=FALSE)
+  # add row index
+  # mutate(row = row_number())
+  
+  data <- lines_df %>%
     # filter to lines with text
-    filter(lines != "") %>% 
+    filter(lines != "") %>%
+    # add line before and after
+    mutate(line_before=lag(lines), line_after=lead(lines)) %>% 
     # get rid of duplicate lines
     unique() %>% 
     # lowercase all text
     mutate(lines=str_to_lower(lines)) %>%
     # reduce to lines with desired verbage
     filter(str_detect(lines, "i need ") | str_detect(lines, "i want ")) %>%
+    # remove questions
+    filter(str_detect(lines, "\\?", negate=TRUE)) %>% 
     # add in artist name column + title
-    mutate(artist=argv["artist"], title=argv["title"])
+    mutate(artist=argv["artist"], title=argv["title"]) 
+    # add a the lines before and after for context
+    # mutate(line_before=lines_df[row - 1,]$lines, line_after=lines_df[row + 1,]$lines)
+    
 })
 
-write.table(data_needs_wants, file = file_out, row.names = FALSE, sep = ",")
+# write.table(data_needs_wants, file = file_out, row.names = FALSE, sep = ",")
 ```
 
 Sweet. Let's checkout out some of the preliminary results, just looking at solo artists (no features) where a line includes an **I need** or **I want** expression.
@@ -97,6 +109,9 @@ datatable(data_needs_wants, rownames = FALSE, filter = "top", options = list(pag
 ### What are the 5 levels of needs of musicians?
 ```{r levels}
 data_needs <- data_needs_wants %>% filter(str_detect(lines, "i need "))
+file_out <- here::here("assets", "data", "processed_data", "needs.csv")
+
+write.table(data_needs, file = file_out, row.names = FALSE, sep = ",")
 ```
 
 ```{r results_needs}
